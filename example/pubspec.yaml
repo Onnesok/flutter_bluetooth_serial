@@ -3,17 +3,19 @@ version: 0.4.0
 description: Demonstrates how to use the `flutter_bluetooth_serial` plugin.
 authors:
   - Patryk Ludwikowski <patryk.ludwikowski.7@gmail.com>
+fokedby:
+  - Abd alrahman kanawati <kanawatiabdalrahman@gmail.com>
 homepage: https://github.com/edufolly/flutter_bluetooth_serial/tree/master/example/
 
 environment:
-  sdk: ">=2.12.0 <3.0.0"
+  sdk: ^3.5.3
 
 dependencies:
   flutter:
     sdk: flutter
 
-  scoped_model: ^2.0.0-nullsafety.0
-  cupertino_icons: ^1.0.3
+  scoped_model: ^2.0.0
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:

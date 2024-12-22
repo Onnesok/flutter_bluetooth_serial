@@ -1,27 +1,33 @@
 # `flutter_bluetooth_serial`
 
-[![pub package](https://img.shields.io/pub/v/flutter_bluetooth_serial.svg)](https://pub.dartlang.org/packages/flutter_bluetooth_serial)
+[![pub package](https://img.shields.io/pub/v/flutter_bluetooth_serial.svg)](https://github.com/edufolly/flutter_bluetooth_serial)
 
 Flutter basic implementation for Classical Bluetooth (only RFCOMM for now).
+
+## flutter_bluetooth_serial
+
+This Repo is a fork of the original [flutter_bluetooth_serial](https://github.com/edufolly/flutter_bluetooth_serial/milestones)
+
+updated on it version of android on this package and solve some conflict in example
 
 ## Features
 
 The first goal of this project, started by @edufolly was making an interface for
 Serial Port Protocol (HC-05 Adapter). Now the plugin features:
 
-+ Adapter status monitoring,
+- Adapter status monitoring,
 
-+ Turning adapter on and off,
+- Turning adapter on and off,
 
-+ Opening settings,
+- Opening settings,
 
-+ Discovering devices (and requesting discoverability),
+- Discovering devices (and requesting discoverability),
 
-+ Listing bonded devices and pairing new ones,
+- Listing bonded devices and pairing new ones,
 
-+ Connecting to multiple devices at the same time,
+- Connecting to multiple devices at the same time,
 
-+ Sending and receiving data (multiple connections).
+- Sending and receiving data (multiple connections).
 
 The plugin (for now) uses Serial Port profile for moving data over RFCOMM, so
 make sure there is running Service Discovery Protocol that points to SP/RFCOMM
@@ -106,16 +112,16 @@ Check out [example application](example/README.md) with connections with both
 Arduino HC-05 and Raspberry Pi (RFCOMM) Bluetooth interfaces.
 
 |       Main screen and options        |       Discovery and connecting       |       Simple chat with server        |        Background connection         |
-|:------------------------------------:|:------------------------------------:|:------------------------------------:|:------------------------------------:|
+| :----------------------------------: | :----------------------------------: | :----------------------------------: | :----------------------------------: |
 | ![](https://i.imgur.com/qeeMsVe.png) | ![](https://i.imgur.com/zruuelZ.png) | ![](https://i.imgur.com/y5mTUey.png) | ![](https://i.imgur.com/3wvwDVo.png) |
 
 ## To-do list
 
-+ Add some utils to easier manage `BluetoothConnection` (see discussion #41),
-+ Allow connection method/protocol/UUID specification,
-+ Listening/server mode,
-+ Recognizing and displaying `BluetoothClass` of device,
-+ Maybe integration with `flutter_blue` one day ;)
+- Add some utils to easier manage `BluetoothConnection` (see discussion #41),
+- Allow connection method/protocol/UUID specification,
+- Listening/server mode,
+- Recognizing and displaying `BluetoothClass` of device,
+- Maybe integration with `flutter_blue` one day ;)
 
 You might also want to
 check [milestones](https://github.com/edufolly/flutter_bluetooth_serial/milestones).
