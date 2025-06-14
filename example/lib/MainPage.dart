@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:scoped_model/scoped_model.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import './BackgroundCollectedPage.dart';
 import './BackgroundCollectingTask.dart';
@@ -33,6 +34,8 @@ class _MainPage extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+
+    _requestPermissions();
 
     // Get current state
     FlutterBluetoothSerial.instance.state.then((state) {
@@ -79,7 +82,7 @@ class _MainPage extends State<MainPage> {
 
   @override
   void dispose() {
-    FlutterBluetoothSerial.instance.setPairingRequestHandler(null);
+    FlutterBluetoothSerial.setPairingRequestHandler(null);
     _collectingTask?.dispose();
     _discoverableTimeoutTimer?.cancel();
     super.dispose();
@@ -154,8 +157,7 @@ class _MainPage extends State<MainPage> {
                     icon: const Icon(Icons.refresh),
                     onPressed: () async {
                       print('Discoverable requested');
-                      final int timeout = (await FlutterBluetoothSerial.instance
-                          .requestDiscoverable(60))!;
+                      final int timeout = (await FlutterBluetoothSerial.requestDiscoverable(60))!;
                       if (timeout < 0) {
                         print('Discoverable mode denied');
                       } else {
@@ -169,7 +171,7 @@ class _MainPage extends State<MainPage> {
                             Timer.periodic(Duration(seconds: 1), (Timer timer) {
                           setState(() {
                             if (_discoverableTimeoutSecondsLeft < 0) {
-                              FlutterBluetoothSerial.instance.isDiscoverable
+                              FlutterBluetoothSerial.isDiscoverable
                                   .then((isDiscoverable) {
                                 if (isDiscoverable ?? false) {
                                   print(
@@ -201,7 +203,7 @@ class _MainPage extends State<MainPage> {
                   _autoAcceptPairingRequests = value;
                 });
                 if (value) {
-                  FlutterBluetoothSerial.instance.setPairingRequestHandler(
+                  FlutterBluetoothSerial.setPairingRequestHandler(
                       (BluetoothPairingRequest request) {
                     print("Trying to auto-pair with Pin 1234");
                     if (request.pairingVariant == PairingVariant.Pin) {
@@ -210,8 +212,7 @@ class _MainPage extends State<MainPage> {
                     return Future.value(null);
                   });
                 } else {
-                  FlutterBluetoothSerial.instance
-                      .setPairingRequestHandler(null);
+                  FlutterBluetoothSerial.setPairingRequestHandler(null);
                 }
               },
             ),
@@ -353,5 +354,14 @@ class _MainPage extends State<MainPage> {
         },
       );
     }
+  }
+
+  Future<void> _requestPermissions() async {
+    await [
+      Permission.bluetooth,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.location,
+    ].request();
   }
 }

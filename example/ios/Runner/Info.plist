@@ -41,5 +41,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>This app uses Bluetooth to connect to devices.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>This app uses Bluetooth to connect to devices.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs location access to discover Bluetooth devices.</string>
 </dict>
 </plist>

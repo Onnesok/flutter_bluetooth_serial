@@ -14,6 +14,7 @@ dependencies:
 
   scoped_model: ^2.0.0-nullsafety.0
   cupertino_icons: ^1.0.3
+  permission_handler: ^11.4.0
 
 dev_dependencies:
   flutter_test:
