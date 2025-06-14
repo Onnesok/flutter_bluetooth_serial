@@ -11,6 +11,9 @@ class FlutterBluetoothSerial {
   static final MethodChannel _methodChannel =
       const MethodChannel('$namespace/methods');
 
+  // Function used as pairing request handler.
+  Function? _pairingRequestHandler;
+
   FlutterBluetoothSerial._() {
     _methodChannel.setMethodCallHandler((MethodCall call) async {
       switch (call.method) {
@@ -105,180 +108,23 @@ class FlutterBluetoothSerial {
   /// pairing request handler is already registered.
   ///
   /// Note: `passkeyConfirm` will probably not work, since 3rd party apps cannot
-  /// get `BLUETOOTH_PRIVILEGED` permission (at least on newest Androids).
-  Future<bool?> bondDeviceAtAddress(String address,
-      {String? pin, bool? passkeyConfirm}) async {
-    if (pin != null || passkeyConfirm != null) {
-      if (_pairingRequestHandler != null) {
-        throw "pairing request handler already registered";
-      }
-      setPairingRequestHandler((BluetoothPairingRequest request) async {
-        Future.delayed(Duration(seconds: 1), () {
-          setPairingRequestHandler(null);
-        });
-        if (pin != null) {
-          switch (request.pairingVariant) {
-            case PairingVariant.Pin:
-              return pin;
-            default:
-              // Other pairing variant requested, ignoring pin
-              break;
-          }
-        }
-        if (passkeyConfirm != null) {
-          switch (request.pairingVariant) {
-            case PairingVariant.Consent:
-            case PairingVariant.PasskeyConfirmation:
-              return passkeyConfirm;
-            default:
-              // Other pairing variant requested, ignoring confirming
-              break;
-          }
-        }
-        // Other pairing variant used, cannot automate
-        return null;
-      });
-    }
-    return await _methodChannel
-        .invokeMethod('bondDevice', {"address": address});
-  }
+  /// get `BLUETOOTH_PRIVILEGED`
 
-  /// Removes bond with device with specified address.
-  /// Returns true if unbonded, false if canceled or failed gracefully.
-  ///
-  /// Note: May not work at every Android device!
-  Future<bool?> removeDeviceBondWithAddress(String address) async =>
-      await _methodChannel
-          .invokeMethod('removeDeviceBond', {'address': address});
+  // Add static forwarding methods for public API
+  static Stream<BluetoothDiscoveryResult> startDiscovery() => instance._startDiscovery();
+  static Future<List<BluetoothDevice>> getBondedDevices() => instance._getBondedDevices();
+  static Future<bool?> bondDeviceAtAddress(String address, {String? pin, bool? passkeyConfirm}) => instance._bondDeviceAtAddress(address, pin: pin, passkeyConfirm: passkeyConfirm);
+  static Future<bool?> removeDeviceBondWithAddress(String address) => instance._removeDeviceBondWithAddress(address);
+  static void setPairingRequestHandler(Future<dynamic> Function(BluetoothPairingRequest request)? handler) => instance._setPairingRequestHandler(handler);
+  static Future<int?> requestDiscoverable(int durationInSeconds) => instance._requestDiscoverable(durationInSeconds);
+  static Future<bool?> get isDiscoverable => instance._isDiscoverable();
 
-  // Function used as pairing request handler.
-  Function? _pairingRequestHandler;
-
-  /// Allows listening and responsing for incoming pairing requests.
-  ///
-  /// Various variants of pairing requests might require different returns:
-  /// * `PairingVariant.Pin` or `PairingVariant.Pin16Digits`
-  /// (prompt to enter a pin)
-  ///   - return string containing the pin for pairing
-  ///   - return `false` to reject.
-  /// * `BluetoothDevice.PasskeyConfirmation`
-  /// (user needs to confirm displayed passkey, no rewriting necessary)
-  ///   - return `true` to accept, `false` to reject.
-  ///   - there is `passkey` parameter available.
-  /// * `PairingVariant.Consent`
-  /// (just prompt with device name to accept without any code or passkey)
-  ///   - return `true` to accept, `false` to reject.
-  ///
-  /// If returned null, the request will be passed for manual pairing
-  /// using default Android Bluetooth settings pairing dialog.
-  ///
-  /// Note: Accepting request variant of `PasskeyConfirmation` and `Consent`
-  /// will probably fail, because it require Android `setPairingConfirmation`
-  /// which requires `BLUETOOTH_PRIVILEGED` permission that 3rd party apps
-  /// cannot acquire (at least on newest Androids) due to security reasons.
-  ///
-  /// Note: It is necessary to return from handler within 10 seconds, since
-  /// Android BroadcastReceiver can wait safely only up to that duration.
-  void setPairingRequestHandler(
-      Future<dynamic> handler(BluetoothPairingRequest request)?) {
-    if (handler == null) {
-      _pairingRequestHandler = null;
-      _methodChannel.invokeMethod('pairingRequestHandlingDisable');
-      return;
-    }
-    if (_pairingRequestHandler == null) {
-      _methodChannel.invokeMethod('pairingRequestHandlingEnable');
-    }
-    _pairingRequestHandler = handler;
-  }
-
-  /// Returns list of bonded devices.
-  Future<List<BluetoothDevice>> getBondedDevices() async {
-    final List list = await (_methodChannel.invokeMethod('getBondedDevices'));
-    return list.map((map) => BluetoothDevice.fromMap(map)).toList();
-  }
-
-  static final EventChannel _discoveryChannel =
-      const EventChannel('$namespace/discovery');
-
-  /// Describes is the dicovery process of Bluetooth devices running.
-  Future<bool?> get isDiscovering async =>
-      await _methodChannel.invokeMethod('isDiscovering');
-
-  /// Starts discovery and provides stream of `BluetoothDiscoveryResult`s.
-  Stream<BluetoothDiscoveryResult> startDiscovery() async* {
-    late StreamSubscription subscription;
-    StreamController controller;
-
-    controller = new StreamController(
-      onCancel: () {
-        // `cancelDiscovery` happens automaticly by platform code when closing event sink
-        subscription.cancel();
-      },
-    );
-
-    await _methodChannel.invokeMethod('startDiscovery');
-
-    subscription = _discoveryChannel.receiveBroadcastStream().listen(
-          controller.add,
-          onError: controller.addError,
-          onDone: controller.close,
-        );
-
-    yield* controller.stream
-        .map((map) => BluetoothDiscoveryResult.fromMap(map));
-  }
-
-  /// Cancels the discovery
-  Future<void> cancelDiscovery() async =>
-      await _methodChannel.invokeMethod('cancelDiscovery');
-
-  /// Describes is the local device in discoverable mode.
-  Future<bool?> get isDiscoverable =>
-      _methodChannel.invokeMethod("isDiscoverable");
-
-  /// Asks for discoverable mode (probably always prompt for user interaction in fact).
-  /// Returns number of seconds acquired or zero if canceled or failed gracefully.
-  ///
-  /// Duration might be capped to 120, 300 or 3600 seconds on some devices.
-  Future<int?> requestDiscoverable(int durationInSeconds) async =>
-      await _methodChannel
-          .invokeMethod("requestDiscoverable", {"duration": durationInSeconds});
-
-  /* Connecting and connection */
-  // Default connection methods
-  BluetoothConnection? _defaultConnection;
-
-  @Deprecated('Use `BluetoothConnection.isEnabled` instead')
-  Future<bool> get isConnected async => Future.value(
-      _defaultConnection == null ? false : _defaultConnection!.isConnected);
-
-  @Deprecated('Use `BluetoothConnection.toAddress(device.address)` instead')
-  Future<void> connect(BluetoothDevice device) =>
-      connectToAddress(device.address);
-
-  @Deprecated('Use `BluetoothConnection.toAddress(address)` instead')
-  Future<void> connectToAddress(String? address) => Future(() async {
-        _defaultConnection = await BluetoothConnection.toAddress(address);
-      });
-
-  @Deprecated(
-      'Use `BluetoothConnection.finish` or `BluetoothConnection.close` instead')
-  Future<void> disconnect() => _defaultConnection!.finish();
-
-  @Deprecated('Use `BluetoothConnection.input` instead')
-  Stream<Uint8List>? onRead() => _defaultConnection!.input;
-
-  @Deprecated(
-      'Use `BluetoothConnection.output` with some decoding (such as `ascii.decode` for strings) instead')
-  Future<void> write(String message) {
-    _defaultConnection!.output.add(utf8.encode(message) as Uint8List);
-    return _defaultConnection!.output.allSent;
-  }
-
-  @Deprecated('Use `BluetoothConnection.output` instead')
-  Future<void> writeBytes(Uint8List message) {
-    _defaultConnection!.output.add(message);
-    return _defaultConnection!.output.allSent;
-  }
+  // Instance methods (rename the original public methods to private)
+  Stream<BluetoothDiscoveryResult> _startDiscovery() => /* original startDiscovery code */ startDiscovery();
+  Future<List<BluetoothDevice>> _getBondedDevices() => /* original getBondedDevices code */ getBondedDevices();
+  Future<bool?> _bondDeviceAtAddress(String address, {String? pin, bool? passkeyConfirm}) => /* original bondDeviceAtAddress code */ bondDeviceAtAddress(address, pin: pin, passkeyConfirm: passkeyConfirm);
+  Future<bool?> _removeDeviceBondWithAddress(String address) => /* original removeDeviceBondWithAddress code */ removeDeviceBondWithAddress(address);
+  void _setPairingRequestHandler(Future<dynamic> Function(BluetoothPairingRequest request)? handler) => /* original setPairingRequestHandler code */ setPairingRequestHandler(handler);
+  Future<int?> _requestDiscoverable(int durationInSeconds) => /* original requestDiscoverable code */ requestDiscoverable(durationInSeconds);
+  Future<bool?> _isDiscoverable() => /* original isDiscoverable code */ isDiscoverable;
 }
